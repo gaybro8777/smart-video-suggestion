@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>💡 Smart Video Suggest</title>
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb"
+        crossorigin="anonymous">
+
+    <link href="https://unpkg.com/cloudinary-video-player/dist/cld-video-player.min.css" rel="stylesheet">
+    
+    <script src="https://unpkg.com/cloudinary-core/cloudinary-core-shrinkwrap.min.js" type="text/javascript"></script>
+    <script src="https://unpkg.com/cloudinary-video-player/dist/cld-video-player.min.js" type="text/javascript"></script>
+
+</head>
+
+<body class="wrapper">
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="#">💡</a>
+            </div>
+            <p style="padding-top:15px;">Smart Video Suggest</p>
+        </div>
+    </nav>
+
+    <div class="container" id="app" style="margin-top:56px;">
+        <div class="row">
+            <div class="col-sm-12" style="text-align:center">
+                <img src="/img/video.png" height="100px" alt="" srcset="">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div v-show="preview == false" class="camera-area">
+                    <div id="camera" style="width: 100%; height:240px;"></div>
+                    <div style="margin-top:20px" class="center">
+                        <button class="btn btn-primary" type="button" v-on:click="captureFace">Suggest Video</button>
+                    </div>
+                </div>
+
+                <div v-show="preview == true" class="camera-area">
+                    <h3 v-if="mood != ''">
+                        <i>Emotion : {{ mood | capitalize }}</i>
+                    </h3>
+                    <div id="capture_preview">
+                        <img class="img-responsive" width="100%" height="240px" :src="image" />
+                    </div>
+                    <div style="margin-top:20px" class="center">
+                        <button class="btn btn-primary" type="button" v-on:click="toggleWebcam">Retake Photo</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">  
+                <div class="result-header center">
+                    <h3>Suggested Videos</h3>
+                </div>
+
+
+                <video id="video-player" controls class="single-image center cld-video-player cld-video-player-skin-light">
+                </video>
+            </div>
+        </div>
+    </div>
+    <style>
+        .camera-area {
+            width: 50%;
+            margin: auto;
+        }
+
+        .playlist-title {
+            width: 200px;
+            overflow: hidden;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .navbar {
+            background-color: black;
+            color: white;
+        }
+
+        .single-image{
+            width: 100%;
+            height:  300px;
+            padding-left : 20px;
+            padding-right: 20px;
+        }
+        #camera{
+            width: 100%;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="/js/webcam.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh"
+        crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
+        crossorigin="anonymous"></script>
+        <script>
+            // Capitalize function
+        Vue.filter('capitalize', function (str) {
+            return str.charAt(0).toUpperCase().concat(str.slice(1).toLowerCase());
+        });
+        // vue instance will be built here        
+        var suggest = new Vue({
+            el: '#app',
+            data: {
+                loading: '',
+                image: null,
+                suggestions: [],
+                mood: '',
+                preview: false,
+            },
+            methods: {
+                captureFace: function () {
+                    this.preview = true;
+                    this.mood = '';
+                    this.suggestions = '';
+                    //  here we take a capture of the image and then show image
+                    let snap = '';
+                    Webcam.snap(function (data_uri) {
+                        snap = data_uri;
+                    });
+                    this.image = snap;
+                    this.upload();
+                },
+                upload: function () {
+                    // build form, send image to server for processing
+                    const formData = new FormData()
+                    // note that image is already in the data_uri format
+                    formData.append('image', this.image);
+                    this.loading = 'Generating video suggestions for you, please wait ...';
+                    // Post to server
+                    axios.post('http://localhost:3128/suggest', formData)
+                    .then(res => {
+                        this.loading = '';
+                        // the emotions will be returned to this url
+                        this.mood = res.data.mood;
+                        //  initialize the cloudinary video player
+                        var cld = cloudinary.Cloudinary.new({ cloud_name: "demo", secure: true });
+                        var demoplayer = cld.videoPlayer('video-player');
+                        demoplayer.playlistByTag( "cat" ,
+                        { sourceParams: { angle: 0 }, autoAdvance: 0, repeat: true, presentUpcoming: 5 })
+                        .then(function (player) {
+                            console.log("Playlist loaded")
+                        })
+                    })
+                },
+                toggleWebcam: function () {
+                    this.preview = false;
+                }
+            }
+        });
+        
+        // Initialize webcam
+        Webcam.attach('#camera');
+    </script>
+</body>
+
+</html>
