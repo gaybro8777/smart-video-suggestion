@@ -65,67 +65,18 @@ app.get("/", function(req, res) {
 });
 
 app.post("/suggest", multipartMiddleware, function(req, res) {
-  // added default data for testing purpose
-  let emotions = {
-    anger: 0,
-    contempt: 0,
-    disgust: 0,
-    fear: 0.7,
-    happiness: 0.984,
-    neutral: 0.016,
-    sadness: 0,
-    surprise: 0
-  };
-  let arr = JSON.parse(JSON.stringify(emotions));
-  let visible_emotion = getMaxKey(arr);
-  return res.json({
+  
+  cloudinary.uploader.upload( req.body.image , function(result) {
+    emotions = result.info.detection.adv_face.data[0].attributes.emotion;
+    let arr = JSON.parse(JSON.stringify(emotions));
+    let visible_emotion = getMaxKey(arr);
+    return res.json({
       status: true,
       mood: visible_emotion
-    });
-  
-  // cloudinary.uploader.upload( req.body.image , function(result) {
-  //   console.log( result.info.detection.adv_face.data[0].attributes.emotion );
-  //   emotions = result.info.detection.adv_face.data[0].attributes.emotion;
-  //   console.log( emotions );
-  //   let arr = JSON.parse(JSON.stringify(emotions));
-  //   let visible_emotion = getMaxKey(arr);
-  //   console.log( visible_emotion );
-  //   // now make an api call to spotify music api to get some suggested playlists
-  //   return res.json({
-  //     status: true,
-  //     mood: visible_emotion
-  //   })
-  // },{ detection: "adv_face" }
-  // );
+    })
+  },{ detection: "adv_face" }
+  );
 
-  // request.post(authOptions, function(error, response, body) {
-  //   if (!error && response.statusCode === 200) {
-  //     // use the access token to access the Spotify Web API
-  //     var token = body.access_token;
-  //     var options = {
-  //       url:
-  //         "https://api.spotify.com/v1/search?q=" +
-  //         visible_emotion +
-  //         "&type=playlist",
-  //       headers: {
-  //         Authorization: "Bearer " + token
-  //       },
-  //       json: true
-  //     };
-  //     request.get(options, function(error, response, body) {
-  //       return res.json({
-  //         status: true,
-  //         mood: visible_emotion,
-  //         playlist: body.playlists.items
-  //       });
-  //     });
-  //   } else {
-  //     return res.json({
-  //       status: false,
-  //       mood: visible_emotion
-  //     });
-  //   }
-  // });
 });
 
 // Set port
